@@ -1,0 +1,374 @@
+<script setup lang="ts">
+import { markRaw } from 'vue'
+import {
+  Scale,
+  CheckCircle,
+  Users,
+  DollarSign,
+  Clock,
+  FileText,
+  Bot,
+  Briefcase,
+  Target,
+  Activity,
+  ArrowUpRight,
+} from 'lucide-vue-next'
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { ScrollArea } from '@/components/ui/scroll-area'
+
+import { Line as LineChart, Doughnut as DoughnutChart } from 'vue-chartjs'
+import {
+  Chart as ChartJS,
+  Title,
+  Tooltip,
+  Legend,
+  LineElement,
+  PointElement,
+  CategoryScale,
+  LinearScale,
+  ArcElement,
+  Filler
+} from 'chart.js'
+
+ChartJS.register(
+  Title,
+  Tooltip,
+  Legend,
+  LineElement,
+  PointElement,
+  CategoryScale,
+  LinearScale,
+  ArcElement,
+  Filler
+)
+
+const formatCurrency = (value: number) => {
+  return 'Rp ' + new Intl.NumberFormat('id-ID', {
+    maximumFractionDigits: 0,
+  }).format(value)
+}
+
+const revenueChartData = {
+  labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul'],
+  datasets: [
+    {
+      label: 'Pendapatan',
+      backgroundColor: 'rgba(27, 42, 74, 0.2)',
+      borderColor: '#1B2A4A',
+      borderWidth: 2,
+      fill: true,
+      tension: 0.4,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      data: [180, 210, 195, 240, 220, 280, 245],
+    }
+  ]
+}
+
+const revenueChartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      callbacks: {
+        label: function(context: any) {
+          return 'Rp ' + context.parsed.y + ' Juta'
+        }
+      }
+    }
+  },
+  scales: {
+    x: { grid: { display: false } },
+    y: {
+      grid: { borderDash: [3, 3] },
+      ticks: { callback: function(value: any) { return value + 'Jt' } }
+    }
+  }
+}
+
+const caseDistributionData = {
+  labels: ['Perdata', 'Pidana', 'PHI', 'PTUN', 'Arbitrase', 'Lainnya'],
+  datasets: [
+    {
+      data: [35, 22, 18, 12, 8, 5],
+      backgroundColor: ['#1B2A4A', '#C9A84C', '#10B981', '#6366F1', '#F59E0B', '#94A3B8'],
+      borderWidth: 0,
+    }
+  ]
+}
+
+const caseDistributionOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { position: 'bottom' as const }
+  }
+}
+</script>
+
+<template>
+  <div class="flex flex-col gap-6 p-6 pb-20 md:pb-6">
+    <div>
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Dashboard Overview</h1>
+      <p class="text-slate-500 dark:text-slate-400 mt-1">
+        Ringkasan aktivitas dan performa firma hukum Anda.
+      </p>
+    </div>
+
+    <!-- Top Stats -->
+    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <Card class="hover:shadow-md transition-shadow duration-200 border-none shadow-sm">
+        <CardHeader class="flex flex-row items-center justify-between pb-2">
+          <CardTitle class="text-sm font-medium text-slate-500">Perkara Aktif</CardTitle>
+          <div class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
+            <Scale class="h-4 w-4" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div class="text-3xl font-bold">24</div>
+          <p class="text-xs text-emerald-500 flex items-center mt-1 font-medium">
+            <ArrowUpRight class="mr-1 h-3 w-3" /> +12% dari bulan lalu
+          </p>
+        </CardContent>
+      </Card>
+      
+      <Card class="hover:shadow-md transition-shadow duration-200 border-none shadow-sm">
+        <CardHeader class="flex flex-row items-center justify-between pb-2">
+          <CardTitle class="text-sm font-medium text-slate-500">Perkara Selesai</CardTitle>
+          <div class="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400">
+            <CheckCircle class="h-4 w-4" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div class="text-3xl font-bold">156</div>
+          <p class="text-xs text-emerald-500 flex items-center mt-1 font-medium">
+            <ArrowUpRight class="mr-1 h-3 w-3" /> +8% dari bulan lalu
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card class="hover:shadow-md transition-shadow duration-200 border-none shadow-sm">
+        <CardHeader class="flex flex-row items-center justify-between pb-2">
+          <CardTitle class="text-sm font-medium text-slate-500">Success Rate</CardTitle>
+          <div class="flex h-8 w-8 items-center justify-center rounded-full bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-[#C9A84C]">
+            <Target class="h-4 w-4" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div class="text-3xl font-bold text-[#1B2A4A] dark:text-white">87.5%</div>
+          <p class="text-xs text-emerald-500 flex items-center mt-1 font-medium">
+            <ArrowUpRight class="mr-1 h-3 w-3" /> +3.2% dari bulan lalu
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card class="hover:shadow-md transition-shadow duration-200 border-none shadow-sm">
+        <CardHeader class="flex flex-row items-center justify-between pb-2">
+          <CardTitle class="text-sm font-medium text-slate-500">Total Klien</CardTitle>
+          <div class="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400">
+            <Users class="h-4 w-4" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div class="text-3xl font-bold">89</div>
+          <p class="text-xs text-emerald-500 flex items-center mt-1 font-medium">
+            <ArrowUpRight class="mr-1 h-3 w-3" /> +15% dari bulan lalu
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+
+    <!-- Revenue & Stats -->
+    <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <Card class="bg-[#1B2A4A] text-white border-none shadow-md overflow-hidden relative">
+        <div class="absolute top-0 right-0 p-4 opacity-10">
+          <DollarSign class="w-24 h-24" />
+        </div>
+        <CardHeader class="flex flex-row items-center justify-between pb-2 z-10 relative">
+          <CardTitle class="text-sm font-medium text-slate-300">Pendapatan Bulan Ini</CardTitle>
+        </CardHeader>
+        <CardContent class="z-10 relative">
+          <div class="text-2xl font-bold tracking-tight">{{ formatCurrency(245800000) }}</div>
+        </CardContent>
+      </Card>
+
+      <Card class="bg-gradient-to-br from-[#C9A84C] to-[#A68A3D] text-white border-none shadow-md overflow-hidden relative">
+        <div class="absolute top-0 right-0 p-4 opacity-10">
+          <Briefcase class="w-24 h-24" />
+        </div>
+        <CardHeader class="flex flex-row items-center justify-between pb-2 z-10 relative">
+          <CardTitle class="text-sm font-medium text-white/80">Pendapatan Tahunan</CardTitle>
+        </CardHeader>
+        <CardContent class="z-10 relative">
+          <div class="text-2xl font-bold tracking-tight">{{ formatCurrency(2890000000) }}</div>
+        </CardContent>
+      </Card>
+
+      <Card class="border-none shadow-sm">
+        <CardHeader class="flex flex-row items-center justify-between pb-2">
+          <CardTitle class="text-sm font-medium text-slate-500">Produktivitas</CardTitle>
+          <Activity class="h-4 w-4 text-slate-400" />
+        </CardHeader>
+        <CardContent>
+          <div class="text-2xl font-bold">94%</div>
+          <div class="w-full bg-slate-100 rounded-full h-1.5 mt-2 dark:bg-slate-800">
+            <div class="bg-[#10B981] h-1.5 rounded-full" style="width: 94%"></div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card class="border-none shadow-sm">
+        <CardHeader class="flex flex-row items-center justify-between pb-2">
+          <CardTitle class="text-sm font-medium text-slate-500">Jam Kerja Teragih</CardTitle>
+          <Clock class="h-4 w-4 text-slate-400" />
+        </CardHeader>
+        <CardContent>
+          <div class="text-2xl font-bold">168 <span class="text-sm font-normal text-slate-500">jam</span></div>
+          <div class="w-full bg-slate-100 rounded-full h-1.5 mt-2 dark:bg-slate-800">
+            <div class="bg-[#6366F1] h-1.5 rounded-full" style="width: 75%"></div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid gap-4 md:grid-cols-2">
+      <Card class="border-none shadow-sm col-span-1">
+        <CardHeader>
+          <CardTitle>Tren Pendapatan</CardTitle>
+          <CardDescription>Pendapatan 7 bulan terakhir (dalam juta Rupiah)</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div class="h-[300px] w-full">
+            <LineChart :data="revenueChartData" :options="revenueChartOptions" />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card class="border-none shadow-sm col-span-1">
+        <CardHeader>
+          <CardTitle>Distribusi Perkara</CardTitle>
+          <CardDescription>Berdasarkan jenis kasus aktif</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div class="h-[300px] w-full flex items-center justify-center">
+            <DoughnutChart :data="caseDistributionData" :options="caseDistributionOptions" />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+
+    <!-- 3 Columns Lists -->
+    <div class="grid gap-4 md:grid-cols-3">
+      <!-- Deadline -->
+      <Card class="border-none shadow-sm">
+        <CardHeader class="pb-3">
+          <CardTitle class="text-base flex items-center gap-2">
+            <div class="h-2 w-2 rounded-full bg-red-500 animate-pulse"></div>
+            Deadline Terdekat
+          </CardTitle>
+        </CardHeader>
+        <CardContent class="p-0">
+          <ScrollArea class="h-[320px]">
+            <div class="space-y-0">
+              <div v-for="(item, i) in [
+                { date: '15 Jul', title: 'PT Maju vs CV Jaya', type: 'Sidang', priority: 'high', color: 'bg-red-500' },
+                { date: '18 Jul', title: 'Jawaban Perkara Waris', type: 'Deadline', priority: 'urgent', color: 'bg-red-700' },
+                { date: '22 Jul', title: 'Mediasi PHI PT Abadi', type: 'Mediasi', priority: 'medium', color: 'bg-amber-500' },
+                { date: '25 Jul', title: 'Pembuktian Wanprestasi', type: 'Sidang', priority: 'high', color: 'bg-red-500' },
+                { date: '01 Aug', title: 'Memori Kasasi', type: 'Deadline', priority: 'medium', color: 'bg-amber-500' },
+              ]" :key="i" class="flex items-start gap-4 p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b last:border-0">
+                <div class="flex flex-col items-center justify-center rounded-md bg-slate-100 dark:bg-slate-800 w-12 h-12 shrink-0">
+                  <span class="text-xs font-bold text-slate-700 dark:text-slate-300">{{ item.date.split(' ')[0] }}</span>
+                  <span class="text-[10px] uppercase text-slate-500">{{ item.date.split(' ')[1] }}</span>
+                </div>
+                <div class="flex-1 space-y-1 overflow-hidden">
+                  <p class="text-sm font-medium leading-none truncate">{{ item.title }}</p>
+                  <div class="flex items-center gap-2 pt-1">
+                    <Badge variant="outline" class="text-[10px] h-4 px-1 rounded-sm">{{ item.type }}</Badge>
+                    <div class="flex items-center gap-1">
+                      <div :class="['h-1.5 w-1.5 rounded-full', item.color]"></div>
+                      <span class="text-[10px] text-slate-500 capitalize">{{ item.priority }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+        </CardContent>
+      </Card>
+
+      <!-- Documents -->
+      <Card class="border-none shadow-sm">
+        <CardHeader class="pb-3">
+          <CardTitle class="text-base flex items-center justify-between">
+            Dokumen Terbaru
+            <Button variant="link" size="sm" class="h-auto p-0 text-[#C9A84C]">Lihat Semua</Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent class="p-0">
+          <ScrollArea class="h-[320px]">
+            <div class="space-y-0">
+              <div v-for="(item, i) in [
+                { name: 'Gugatan_PHI.docx', type: 'Gugatan', time: '2 jam lalu', ext: 'docx' },
+                { name: 'Legal_Opinion_Akuisisi.pdf', type: 'Legal Opinion', time: '5 jam lalu', ext: 'pdf' },
+                { name: 'Kontrak_Sewa.docx', type: 'Kontrak', time: '1 hari lalu', ext: 'docx' },
+                { name: 'Somasi_Hutang.pdf', type: 'Somasi', time: '2 hari lalu', ext: 'pdf' },
+                { name: 'NDA_Final.docx', type: 'NDA', time: '3 hari lalu', ext: 'docx' },
+              ]" :key="i" class="flex items-center gap-3 p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-b last:border-0 cursor-pointer">
+                <div :class="['flex h-10 w-10 shrink-0 items-center justify-center rounded-lg', 
+                  item.ext === 'pdf' ? 'bg-red-50 text-red-600 dark:bg-red-900/20' : 'bg-blue-50 text-blue-600 dark:bg-blue-900/20'
+                ]">
+                  <FileText class="h-5 w-5" />
+                </div>
+                <div class="flex-1 overflow-hidden">
+                  <p class="text-sm font-medium leading-tight truncate">{{ item.name }}</p>
+                  <p class="text-xs text-muted-foreground mt-0.5">{{ item.type }} • {{ item.time }}</p>
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+        </CardContent>
+      </Card>
+
+      <!-- AI Activity -->
+      <Card class="border-none shadow-sm">
+        <CardHeader class="pb-3">
+          <CardTitle class="text-base flex items-center gap-2">
+            <Bot class="h-4 w-4 text-[#C9A84C]" />
+            Aktivitas AI Terkini
+          </CardTitle>
+        </CardHeader>
+        <CardContent class="p-0">
+          <ScrollArea class="h-[320px]">
+            <div class="space-y-0 relative before:absolute before:inset-0 before:ml-6 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
+              <div v-for="(item, i) in [
+                { module: 'Copilot', desc: 'Analisis kontrak kerja PT Maju', time: '30 mnt lalu', icon: markRaw(Bot) },
+                { module: 'Research', desc: 'Pencarian yurisprudensi PHK', time: '1 jam lalu', icon: markRaw(Scale) },
+                { module: 'Drafting', desc: 'Generate gugatan wanprestasi', time: '3 jam lalu', icon: markRaw(FileText) },
+                { module: 'Analyzer', desc: 'Analisis SWOT perkara perdata', time: '5 jam lalu', icon: markRaw(Target) },
+                { module: 'Review', desc: 'Review NDA PT Tech', time: '1 hari lalu', icon: markRaw(CheckCircle) },
+              ]" :key="i" class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active p-4 border-b last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <div class="flex items-center gap-3">
+                  <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 border border-white dark:border-slate-900 shadow-sm z-10 group-hover:bg-[#1B2A4A] group-hover:text-white transition-colors">
+                    <component :is="item.icon" class="h-3 w-3" />
+                  </div>
+                  <div class="flex-1">
+                    <p class="text-xs font-semibold text-[#C9A84C]">{{ item.module }}</p>
+                    <p class="text-sm text-slate-700 dark:text-slate-300 line-clamp-1">{{ item.desc }}</p>
+                    <p class="text-xs text-slate-400 mt-0.5">{{ item.time }}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+        </CardContent>
+      </Card>
+    </div>
+  </div>
+</template>

@@ -1,0 +1,805 @@
+// =============================================================================
+// AI Legal Operating System — Prisma Schema
+// Complete database schema for all entities
+// =============================================================================
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------------
+// Authentication & Users
+// -----------------------------------------------------------------------------
+
+model User {
+  id            String           @id @default(cuid())
+  email         String           @unique
+  name          String
+  password      String
+  avatar        String?
+  phone         String?
+  organization  String?
+  role          UserRole         @default(advokat)
+  subscription  SubscriptionTier @default(basic)
+  isActive      Boolean          @default(true)
+  emailVerified DateTime?
+  lastLogin     DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  // Relations
+  cases         Case[]
+  clients       Client[]
+  documents     Document[]
+  conversations Conversation[]
+  invoices      Invoice[]
+  notifications Notification[]
+  activityLogs  ActivityLog[]
+  teamMembers   TeamMember[]
+  apiKeys       ApiKey[]
+}
+
+enum UserRole {
+  advokat
+  firma_hukum
+  corporate_legal
+  in_house_counsel
+  konsultan_hukum
+  notaris
+  legal_officer
+  mahasiswa_hukum
+  dosen_hukum
+}
+
+enum SubscriptionTier {
+  basic
+  professional
+  enterprise
+}
+
+// -----------------------------------------------------------------------------
+// Cases
+// -----------------------------------------------------------------------------
+
+model Case {
+  id             String     @id @default(cuid())
+  caseNumber     String     @unique
+  title          String
+  type           CaseType
+  status         CaseStatus @default(active)
+  court          String?
+  judge          String?
+  opponent       String?
+  opponentLawyer String?
+  filingDate     DateTime?
+  nextHearing    DateTime?
+  description    String?    @db.Text
+  probability    Float?
+  tags           String[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  // Relations
+  userId    String
+  user      User            @relation(fields: [userId], references: [id])
+  clientId  String?
+  client    Client?         @relation(fields: [clientId], references: [id])
+  documents Document[]
+  events    TimelineEvent[]
+  invoices  Invoice[]
+  analyses  CaseAnalysis[]
+
+  @@index([userId])
+  @@index([clientId])
+  @@index([status])
+}
+
+enum CaseType {
+  perdata
+  pidana
+  phi
+  ptun
+  arbitrase
+  cerai
+  pkpu
+  pailit
+  corporate
+}
+
+enum CaseStatus {
+  active
+  pending
+  mediation
+  trial
+  appeal
+  cassation
+  review
+  closed
+  won
+  lost
+  settled
+}
+
+// -----------------------------------------------------------------------------
+// Clients
+// -----------------------------------------------------------------------------
+
+model Client {
+  id        String     @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  company   String?
+  address   String?    @db.Text
+  type      ClientType @default(individual)
+  tags      String[]
+  notes     String?    @db.Text
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // Relations
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  cases     Case[]
+  documents Document[]
+  invoices  Invoice[]
+
+  @@index([userId])
+}
+
+enum ClientType {
+  individual
+  corporate
+}
+
+// -----------------------------------------------------------------------------
+// Documents
+// -----------------------------------------------------------------------------
+
+model Document {
+  id         String       @id @default(cuid())
+  name       String
+  type       DocumentType
+  content    String?      @db.Text
+  fileUrl    String?
+  fileSize   Int?
+  mimeType   String?
+  version    Int          @default(1)
+  tags       String[]
+  isFavorite Boolean      @default(false)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  // Relations
+  userId   String
+  user     User              @relation(fields: [userId], references: [id])
+  caseId   String?
+  case     Case?             @relation(fields: [caseId], references: [id])
+  clientId String?
+  client   Client?           @relation(fields: [clientId], references: [id])
+  versions DocumentVersion[]
+
+  @@index([userId])
+  @@index([caseId])
+}
+
+enum DocumentType {
+  gugatan
+  jawaban
+  replik
+  duplik
+  kesimpulan
+  somasi
+  legal_opinion
+  kontrak
+  perjanjian
+  nda
+  pks
+  surat_kuasa
+  pkpu
+  pailit
+  legal_memo
+  due_diligence
+  template
+  other
+}
+
+model DocumentVersion {
+  id         String   @id @default(cuid())
+  version    Int
+  content    String   @db.Text
+  changeNote String?
+  createdAt  DateTime @default(now())
+
+  // Relations
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+  createdBy  String
+
+  @@index([documentId])
+}
+
+// -----------------------------------------------------------------------------
+// AI Conversations
+// -----------------------------------------------------------------------------
+
+model Conversation {
+  id        String   @id @default(cuid())
+  title     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  userId   String
+  user     User      @relation(fields: [userId], references: [id])
+  messages Message[]
+
+  @@index([userId])
+}
+
+model Message {
+  id          String      @id @default(cuid())
+  role        MessageRole
+  content     String      @db.Text
+  confidence  Float?
+  citations   Json?
+  attachments Json?
+  timestamp   DateTime    @default(now())
+
+  // Relations
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+
+  @@index([conversationId])
+}
+
+enum MessageRole {
+  user
+  assistant
+  system
+}
+
+// -----------------------------------------------------------------------------
+// Timeline & Events
+// -----------------------------------------------------------------------------
+
+model TimelineEvent {
+  id          String        @id @default(cuid())
+  type        EventType
+  title       String
+  date        DateTime
+  endDate     DateTime?
+  description String?       @db.Text
+  status      EventStatus   @default(upcoming)
+  priority    EventPriority @default(medium)
+  location    String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  caseId String?
+  case   Case?   @relation(fields: [caseId], references: [id])
+
+  @@index([caseId])
+  @@index([date])
+}
+
+enum EventType {
+  filing
+  hearing
+  mediation
+  verdict
+  appeal
+  cassation
+  pk_review
+  deadline
+  meeting
+  document
+  other
+}
+
+enum EventStatus {
+  upcoming
+  completed
+  overdue
+  cancelled
+}
+
+enum EventPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+// -----------------------------------------------------------------------------
+// Case Analysis
+// -----------------------------------------------------------------------------
+
+model CaseAnalysis {
+  id              String   @id @default(cuid())
+  swot            Json
+  timeline        Json?
+  missingEvidence Json?
+  legalRisk       Json?
+  legalGaps       Json?
+  recommendations Json?
+  overallScore    Float?
+  createdAt       DateTime @default(now())
+
+  // Relations
+  caseId String?
+  case   Case?   @relation(fields: [caseId], references: [id])
+
+  @@index([caseId])
+}
+
+// -----------------------------------------------------------------------------
+// Billing & Invoices
+// -----------------------------------------------------------------------------
+
+model Invoice {
+  id        String        @id @default(cuid())
+  number    String        @unique
+  amount    Float
+  tax       Float         @default(0)
+  total     Float
+  status    InvoiceStatus @default(draft)
+  dueDate   DateTime
+  items     Json
+  notes     String?       @db.Text
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  // Relations
+  userId   String
+  user     User    @relation(fields: [userId], references: [id])
+  clientId String
+  client   Client  @relation(fields: [clientId], references: [id])
+  caseId   String?
+  case     Case?   @relation(fields: [caseId], references: [id])
+
+  @@index([userId])
+  @@index([clientId])
+}
+
+enum InvoiceStatus {
+  draft
+  sent
+  paid
+  overdue
+  cancelled
+}
+
+// -----------------------------------------------------------------------------
+// Notifications
+// -----------------------------------------------------------------------------
+
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  read      Boolean          @default(false)
+  actionUrl String?
+  timestamp DateTime         @default(now())
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([read])
+}
+
+enum NotificationType {
+  info
+  warning
+  success
+  error
+  reminder
+}
+
+// -----------------------------------------------------------------------------
+// Activity Log & Audit Trail
+// -----------------------------------------------------------------------------
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  action    String
+  module    String
+  details   String?  @db.Text
+  ipAddress String?
+  userAgent String?
+  timestamp DateTime @default(now())
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([timestamp])
+}
+
+// -----------------------------------------------------------------------------
+// Team & Collaboration
+// -----------------------------------------------------------------------------
+
+model TeamMember {
+  id       String   @id @default(cuid())
+  role     String   @default("member")
+  joinedAt DateTime @default(now())
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+// -----------------------------------------------------------------------------
+// API Keys
+// -----------------------------------------------------------------------------
+
+model ApiKey {
+  id        String    @id @default(cuid())
+  key       String    @unique
+  name      String
+  lastUsed  DateTime?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  // Relations
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+// -----------------------------------------------------------------------------
+// National Legal Knowledge Base
+// -----------------------------------------------------------------------------
+
+model LawCategory {
+  id          String          @id @default(cuid())
+  name        String          @unique
+  description String?         @db.Text
+  hierarchy   Int             @default(0)
+  parentId    String?
+  parent      LawCategory?    @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    LawCategory[]   @relation("CategoryHierarchy")
+  documents   LegalDocument[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([parentId])
+}
+
+model LegalDocument {
+  id              String       @id @default(cuid())
+  title           String       @db.Text
+  type            LegalDocType // Enum: UU, PP, PERPRES, PUTUSAN, dll.
+  docNumber       String?
+  year            Int?
+  promulgatedDate DateTime?
+  status          LegalStatus  @default(BERLAKU) // Enum: BERLAKU, DICABUT, MENGALAMI_PERUBAHAN
+  sourceUrl       String?
+  sourceId        String? // Relasi opsional ke SourceRepository
+  categoryId      String?
+
+  // Relations
+  category    LawCategory?           @relation(fields: [categoryId], references: [id])
+  repository  SourceRepository?      @relation(fields: [sourceId], references: [id])
+  chapters    LegalChapter[]
+  articles    LegalArticle[]
+  attachments LegalAttachment[]
+  histories   LegalHistory[]
+  versions    LegalVersion[]
+  keywords    LegalDocumentKeyword[]
+  citing      LegalCitation[]        @relation("CitingDocument")
+  citedBy     LegalCitation[]        @relation("CitedDocument")
+  sourceRelations LegalRelation[]    @relation("SourceRelations")
+  targetRelations LegalRelation[]    @relation("TargetRelations")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@index([year])
+  @@index([categoryId])
+  @@index([status])
+  @@index([type, year])
+  @@index([promulgatedDate])
+}
+
+enum LegalDocType {
+  UUD_1945
+  TAP_MPR
+  UU
+  PERPPU
+  PP
+  PERPRES
+  PERMEN
+  PERDA_PROV
+  PERGUB
+  PERDA_KABKOT
+  PERBUP
+  PERWALI
+  SE
+  INPRES
+  PERMA
+  SEMA
+  PUTUSAN_MA
+  PUTUSAN_MK
+  YURISPRUDENSI
+  PERATURAN_OJK
+  PERATURAN_BI
+  PERATURAN_KPU
+  PERATURAN_BPK
+  PERATURAN_LKPP
+  PERATURAN_BKN
+  PERATURAN_BSSN
+  OTHER
+}
+
+enum LegalStatus {
+  BERLAKU
+  DICABUT
+  TIDAK_BERLAKU
+  MENGALAMI_PERUBAHAN
+}
+
+model LegalChapter {
+  id         String         @id @default(cuid())
+  title      String
+  order      Int
+  documentId String
+  document   LegalDocument  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  articles   LegalArticle[]
+
+  @@index([documentId])
+}
+
+model LegalArticle {
+  id         String  @id @default(cuid())
+  title      String // e.g., "Pasal 1"
+  content    String? @db.Text
+  order      Int
+  documentId String
+  chapterId  String?
+
+  document    LegalDocument     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  chapter     LegalChapter?     @relation(fields: [chapterId], references: [id])
+  paragraphs  LegalParagraph[]
+  explanation LegalExplanation?
+
+  @@index([documentId])
+  @@index([chapterId])
+}
+
+model LegalParagraph {
+  id        String @id @default(cuid())
+  content   String @db.Text
+  order     Int // 1, 2, 3 (untuk ayat 1, ayat 2)
+  articleId String
+
+  article LegalArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+
+  @@index([articleId])
+}
+
+model LegalExplanation {
+  id        String @id @default(cuid())
+  content   String @db.Text
+  articleId String @unique
+
+  article LegalArticle @relation(fields: [articleId], references: [id], onDelete: Cascade)
+}
+
+model LegalAttachment {
+  id         String @id @default(cuid())
+  title      String
+  fileUrl    String
+  documentId String
+
+  document LegalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+}
+
+model LegalHistory {
+  id         String   @id @default(cuid())
+  action     String // e.g., "Diubah oleh", "Mencabut"
+  date       DateTime
+  documentId String
+
+  document     LegalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  relatedDocId String? // The document causing the change
+
+  @@index([documentId])
+}
+
+model LegalRelation {
+  id          String       @id @default(cuid())
+  type        RelationType
+  sourceDocId String
+  targetDocId String
+
+  sourceDoc   LegalDocument @relation("SourceRelations", fields: [sourceDocId], references: [id], onDelete: Cascade)
+  targetDoc   LegalDocument @relation("TargetRelations", fields: [targetDocId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime     @default(now())
+
+  @@index([sourceDocId])
+  @@index([targetDocId])
+  @@index([sourceDocId, type])
+}
+
+enum RelationType {
+  MENGUBAH
+  MENCABUT
+  MENGGANTIKAN
+  MELAKSANAKAN
+  MENJELASKAN
+  MENGACU
+  TURUNAN
+  INDUK
+}
+
+model LegalCitation {
+  id               String  @id @default(cuid())
+  citingDocumentId String
+  citedDocumentId  String
+  context          String? @db.Text
+
+  citingDocument LegalDocument @relation("CitingDocument", fields: [citingDocumentId], references: [id], onDelete: Cascade)
+  citedDocument  LegalDocument @relation("CitedDocument", fields: [citedDocumentId], references: [id], onDelete: Cascade)
+
+  @@index([citingDocumentId])
+  @@index([citedDocumentId])
+}
+
+model LegalVersion {
+  id          String   @id @default(cuid())
+  versionName String
+  documentId  String
+  changes     String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  document LegalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+}
+
+model LegalKeyword {
+  id        String                 @id @default(cuid())
+  keyword   String                 @unique
+  documents LegalDocumentKeyword[]
+}
+
+model LegalDocumentKeyword {
+  documentId String
+  keywordId  String
+
+  document LegalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  keyword  LegalKeyword  @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, keywordId])
+}
+
+model SourceRepository {
+  id          String          @id @default(cuid())
+  name        String // e.g., "JDIH BPHN"
+  url         String
+  description String?         @db.Text
+  documents   LegalDocument[]
+  imports     ImportLog[]
+}
+
+model ImportLog {
+  id           String       @id @default(cuid())
+  repositoryId String
+  status       ImportStatus
+  itemsFetched Int
+  itemsFailed  Int
+  errorDetails String?      @db.Text
+  createdAt    DateTime     @default(now())
+
+  repository SourceRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@index([repositoryId])
+}
+
+enum ImportStatus {
+  SUCCESS
+  FAILED
+  PARTIAL
+  IN_PROGRESS
+}
+
+// -----------------------------------------------------------------------------
+// Import Engine (Queue & Jobs)
+// -----------------------------------------------------------------------------
+
+model ImportJob {
+  id            String    @id @default(cuid())
+  fileName      String
+  fileType      String    // JSON, CSV, XML, TXT, PDF
+  fileSize      Int
+  fileUrl       String    // Path penyimpanan sementara
+  status        JobStatus @default(PENDING)
+  totalRecords  Int       @default(0)
+  processed     Int       @default(0)
+  failed        Int       @default(0)
+  errorLog      Json?     // Log error komprehensif
+  createdBy     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  batches       ImportBatch[]
+}
+
+model ImportBatch {
+  id            String    @id @default(cuid())
+  jobId         String
+  batchNumber   Int
+  status        BatchStatus @default(PENDING)
+  recordIds     String[]
+  errorDetails  String?   @db.Text
+  
+  job           ImportJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  @@index([jobId])
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  PAUSED
+  FAILED
+  COMPLETED
+  ROLLING_BACK
+  ROLLED_BACK
+  CANCELLED
+}
+
+enum BatchStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+}
+
+// -----------------------------------------------------------------------------
+// Search Engine
+// -----------------------------------------------------------------------------
+
+model SearchHistory {
+  id        String   @id @default(cuid())
+  userId    String?  // Nullable for guest/session
+  query     String
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   // e.g., "CREATE_DOC", "DELETE_DOC", "IMPORT"
+  entityId  String   // The ID of the affected document or entity
+  entityType String  // "LegalDocument", "User", etc
+  userId    String?  // The user who performed the action (optional for system processes)
+  details   String?  @db.Text // JSON payload of changes
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([entityId])
+  @@index([action])
+  @@index([createdAt])
+}
